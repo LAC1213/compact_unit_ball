@@ -1,0 +1,8 @@
+[package]
+name = "compact_unit_ball"
+version = "0.1"
+lean_version = "3.4.2"
+path = "src"
+
+[dependencies]
+mathlib = {git = "https://github.com/leanprover/mathlib", rev = "3266b9606c713f6eb8808a42f6ae743c338024e0"}
