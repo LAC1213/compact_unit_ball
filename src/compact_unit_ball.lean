@@ -15,9 +15,15 @@ import analysis.normed_space.finite_dimension
 noncomputable theory
 open_locale classical
 
-local attribute [instance, priority 0] algebra.to_has_scalar
-local attribute [instance, priority 200] vector_space.to_module
+local attribute [instance, priority 20000] nat.has_zero nat.has_one real.domain
 
+local attribute [instance, priority 10000] mul_action.to_has_scalar distrib_mul_action.to_mul_action
+semimodule.to_distrib_mul_action module.to_semimodule vector_space.to_module normed_space.to_vector_space
+ring.to_monoid normed_ring.to_ring normed_field.to_normed_ring add_group.to_add_monoid
+add_comm_group.to_add_group normed_group.to_add_comm_group ring.to_semiring add_comm_group.to_add_comm_monoid
+normed_field.to_discrete_field normed_field.to_has_norm nondiscrete_normed_field.to_normed_field
+zero_ne_one_class.to_has_zero zero_ne_one_class.to_has_one domain.to_zero_ne_one_class
+division_ring.to_domain field.to_division_ring discrete_field.to_field
 set_option class.instance_max_depth 100
 
 open metric set
@@ -35,105 +41,48 @@ variables
 lemma nontrivial_norm_gt_one: ∃ x : k, x ≠ 0 ∧ norm x > 1 :=
 begin
   cases normed_field.exists_one_lt_norm k with x hx,
-  existsi x,
-  split,
-  {
-    intro hzero,
-    rw hzero at hx,
-    norm_num at hx,
-  },{
-    exact hx,
-  },
+  refine ⟨x, _, hx⟩,
+  intro hzero,
+  rw [hzero, norm_zero] at hx,
+  linarith,
 end
 
 lemma nontrivial_arbitrarily_small_norm 
   {e : ℝ} (he : e > 0) : ∃ x : k, x ≠ 0 ∧ norm x < e :=
 begin
-  cases normed_field.exists_norm_lt k he with x hx,
-  existsi x,
-  split, 
-  {
-    intro xzero,
-    have h := hx.1,
-    rw xzero at h,
-    norm_num at h,
-  },{
-    exact hx.2,
-  },
+  rcases normed_field.exists_norm_lt k he with ⟨x, hx₁, hx₂⟩,
+  refine ⟨x, _, hx₂⟩,
+  intro xzero,
+  rw [xzero, norm_zero] at hx₁,
+  linarith
 end
 
-lemma nontrivial_norm_lt_one: 
-  ∃ x : k, x ≠ 0 ∧ norm x < 1 :=
-begin
-  have one_gt_zero : (1 : ℝ) > 0,
-    norm_num,
-  exact nontrivial_arbitrarily_small_norm one_gt_zero, 
-end
+lemma nontrivial_norm_lt_one: ∃ x : k, x ≠ 0 ∧ norm x < 1 :=
+nontrivial_arbitrarily_small_norm (by linarith)
 
 lemma ball_span_ash {A : set V}
   (hyp : ∀ v : V, norm v ≤ 1 → v ∈ submodule.span k A) (v : V) :
   v ∈ submodule.span k A :=
 begin
-  cases (classical.em (v = 0)) with v0 vn0,
-  { rw submodule.mem_span,
-    intros p hp,
-    rw v0,
-    exact submodule.zero_mem p,
-  },
-  have hw2 : norm v ≠ 0 := mt (norm_eq_zero v).1 vn0,
-  have h1 : 1 / norm v > 0,
-    norm_num,
-    have h2 : 0 ≤ norm v := norm_nonneg v,
-    rw le_iff_lt_or_eq at h2,
-    cases h2 with h21 h22,
-      exact h21,
-      exfalso,
-      have : norm v = 0,
-      symmetry,
-      exact h22,
-      exact hw2 this,
-  
-  have h_small : ∃ x : k, x ≠ 0 ∧ norm x < 1 / norm v,
-  exact nontrivial_arbitrarily_small_norm h1,
-  cases h_small with x hx,
-    set w : V := x • v with hwdef, -- "set" = "let + have".
-    have hw : norm w ≤ 1,
-    {
-      rw le_iff_lt_or_eq,
-      left,
-      rw hwdef,
-      rw norm_smul,
-      have h3 : norm v > 0, 
-      have := norm_nonneg v,
-      rw le_iff_eq_or_lt at this,
-      cases this with hzero hpos,
-      exfalso,
-      have h6 : norm v = 0,
-      symmetry,
-      exact hzero,
-      exact hw2 h6,
-      exact hpos,
-      have h4 := hx.2,
-      rw <- mul_lt_mul_right h3 at h4,
-      have h5 : 1/norm v * norm v = 1, exact one_div_mul_cancel hw2,
-      rw h5 at h4,
-      exact h4,
-    },
-  rw <- submodule.smul_mem_iff (submodule.span k A) hx.1,
-  rw <- hwdef,
-  exact hyp w hw,
+  by_cases v0 : v = 0,
+  { rw v0,
+    exact submodule.zero_mem _ },
+  { have norm_pos : 0 < norm v, from (norm_pos_iff v).mpr v0,
+    obtain ⟨x, hx₁, hx₂⟩ : ∃ x : k, x ≠ 0 ∧ norm x < 1 / norm v,
+      from nontrivial_arbitrarily_small_norm (one_div_pos_of_pos norm_pos),
+    rw ← submodule.smul_mem_iff (submodule.span k A) hx₁,
+    apply hyp (x • v),
+    rw [norm_smul],
+    exact le_of_lt (mul_lt_of_lt_div norm_pos hx₂) }
 end
 
--- if A spans the closed unit ball then it spans all of V
-lemma ball_span {A : set V}: (∀ v : V, v ∈ (closed_ball 0 1 : set V) 
-  → v ∈ submodule.span k A) → ∀ v : V, v ∈ submodule.span k A :=
+/-- If A spans the closed unit ball then it spans all of V -/
+lemma ball_span {A : set V} (H : (closed_ball 0 1 : set V) ⊆ submodule.span k A) : ∀ v : V, v ∈ submodule.span k A :=
 begin
-  intro H,
-  have hyp : ∀ v : V, norm v ≤ 1 → v ∈ submodule.span k A,
+  apply ball_span_ash,
   intros v hv,
-  rw <- dist_zero_right at hv,
-  exact H v hv,
-  exact ball_span_ash hyp,
+  rw ← dist_zero_right at hv,
+  exact H hv,
 end
 
 theorem finite_dimensional_span_of_finite {A : set V} (hA : finite A) :
