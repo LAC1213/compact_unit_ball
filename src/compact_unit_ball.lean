@@ -31,9 +31,9 @@ open metric set
 universe u
 
 -- completeness of k is only assumed so we can use the library to prove that
--- the span of a finite set is closed. Can someone find a non-complete
--- field k and a normed vector space V over k in which there is finite
--- dimensional subspace which is not closed?
+-- the span of a finite set is closed. 
+-- This is indeed necessary since as Sebastian Gouezel has pointed out, 
+-- Q in R is not closed but it is the span of the finite set {1}!
 variables 
   {k : Type} [nondiscrete_normed_field k] [complete_space k] 
   {V : Type} [normed_group V] [normed_space k V]
